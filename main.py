@@ -21,6 +21,16 @@ KP = 0.3
 gamepad = vg.VX360Gamepad()
 has_received_any_data = False
 
+def find_active_controller_index():
+    """Automatycznie wykrywa, pod którym indeksem w systemie znajduje się aktywny pad (0-3)."""
+    for i in range(4):
+        try:
+            if XInput.get_connected()[i]:
+                return i
+        except Exception:
+            pass
+    return None
+
 def parse_speed(data: bytes) -> float | None:
     if len(data) < 311:
         return None
@@ -62,7 +72,7 @@ async def cruise_control_loop():
     forward_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     print("==================================================")
-    print("🚗 TEMPOMAT GOTOWY DO DROGI 🎮")
+    print("🚗 TEMPOMAT XINPUT (Automatyczne wykrywanie pada) 🎮")
     print("==================================================")
     print("[C] - Włącz/Wyłącz tempomat | [PAGE UP/DOWN] - Zmiana prędkości\n")
 
@@ -88,12 +98,13 @@ async def cruise_control_loop():
 
             current_speed = parse_speed(latest_data) if latest_data else None
 
-            # --- CZYSTE STEROWANIE: TYLKO LEWA GAŁKA + TRIGGERS ---
-            if XInput.get_connected()[0]:
+            # --- DYNAMICZNE WYSZUKIWANIE I KLONOWANIE PADA ---
+            controller_idx = find_active_controller_index()
+            if controller_idx is not None:
                 try:
-                    state = XInput.get_state(0)
+                    state = XInput.get_state(controller_idx)
                     
-                    # 1. Klonujemy TYLKO lewą gałkę (skręt)
+                    # 1. Klonowanie lewej gałki (skręt działa idealnie, bez samoczynnego skręcania)
                     sticks = XInput.get_thumb_values(state)
                     gamepad.left_joystick_float(sticks[0][0], sticks[0][1])
 
