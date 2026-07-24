@@ -37,13 +37,17 @@ def on_press(key):
     try:
         if key.char == 'c':
             cruise_enabled = not cruise_enabled
-            if not cruise_enabled:
-                print("\n🛑 Tempomat WYŁĄCZONY.")
+            if cruise_enabled:
+                print(f"\n🟢 [TEMPOMAT WŁĄCZONY] Docelowa prędkość: {target_speed_kmh:.1f} km/h")
+            else:
+                print(f"\n🔴 [TEMPOMAT WYŁĄCZONY]")
     except AttributeError:
         if key == keyboard.Key.page_up:
             target_speed_kmh += 5.0
+            print(f"\n⏩ Zwiększono prędkość tempomatu do: {target_speed_kmh:.1f} km/h")
         elif key == keyboard.Key.page_down:
             target_speed_kmh -= 5.0
+            print(f"\n⏪ Zmniejszono prędkość tempomatu do: {target_speed_kmh:.1f} km/h")
 
 async def cruise_control_loop():
     global cruise_enabled, has_received_any_data
@@ -58,7 +62,7 @@ async def cruise_control_loop():
     forward_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     print("==================================================")
-    print("🚗 FINALNY TEMPOMAT (Czysty gaz/hamulec) 🎮")
+    print("🚗 TEMPOMAT GOTOWY DO DROGI 🎮")
     print("==================================================")
     print("[C] - Włącz/Wyłącz tempomat | [PAGE UP/DOWN] - Zmiana prędkości\n")
 
@@ -84,10 +88,16 @@ async def cruise_control_loop():
 
             current_speed = parse_speed(latest_data) if latest_data else None
 
-            # --- TYLKO OBSŁUGA PEDAŁÓW (BEZ DOTYKANIA PRZYCISKÓW I GAŁEK) ---
+            # --- CZYSTE STEROWANIE: TYLKO LEWA GAŁKA + TRIGGERS ---
             if XInput.get_connected()[0]:
                 try:
                     state = XInput.get_state(0)
+                    
+                    # 1. Klonujemy TYLKO lewą gałkę (skręt)
+                    sticks = XInput.get_thumb_values(state)
+                    gamepad.left_joystick_float(sticks[0][0], sticks[0][1])
+
+                    # 2. Odczyt triggerów gracza
                     triggers = XInput.get_trigger_values(state)
                     player_brake = triggers[0]
                     player_gas = triggers[1]
@@ -98,27 +108,18 @@ async def cruise_control_loop():
                         if speed_error > 0:
                             cruise_gas = min(1.0, speed_error * KP)
                             cruise_brake = 0.0
-                            status = "PRZYSPIESZANIE"
                         else:
                             cruise_gas = 0.0
                             cruise_brake = min(1.0, abs(speed_error) * KP)
-                            status = "HAMOWANIE   "
 
-                        # Override: Twoje wciśnięcie pedału ma wyższy priorytet
+                        # Override: Twoje fizyczne wciśnięcie ma wyższy priorytet
                         final_gas = max(cruise_gas, player_gas)
                         final_brake = max(cruise_brake, player_brake)
-                        
-                        # print(f"\r[WŁĄCZONY] Cel: {target_speed_kmh:5.1f} | Aktualna: {current_speed:5.1f} km/h | {status} (G: {final_gas:.2f} / H: {final_brake:.2f})", end="")
                     else:
-                        # Tempomat wyłączony - przepuszczamy czysty sygnał z Twojego pada
                         final_gas = player_gas
                         final_brake = player_brake
-                        
-                        if current_speed is not None:
-                            # print(f"\r[WYŁĄCZONY] Cel: {target_speed_kmh:5.1f} | Aktualna: {current_speed:5.1f} km/h | Czekam...                 ", end="")
-                            pass
 
-                    # Wirtualny pad steruje TYLKO triggerami
+                    # Wysyłamy obliczone triggery do wirtualnego pada
                     gamepad.right_trigger_float(final_gas)
                     gamepad.left_trigger_float(final_brake)
 
