@@ -72,7 +72,7 @@ async def cruise_control_loop():
     forward_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     print("==================================================")
-    print("🚗 TEMPOMAT XINPUT (Automatyczne wykrywanie pada) 🎮")
+    print("🚗 TEMPOMAT XINPUT (Pełna obsługa gałek i padów) 🎮")
     print("==================================================")
     print("[C] - Włącz/Wyłącz tempomat | [PAGE UP/DOWN] - Zmiana prędkości\n")
 
@@ -104,11 +104,12 @@ async def cruise_control_loop():
                 try:
                     state = XInput.get_state(controller_idx)
                     
-                    # 1. Klonowanie lewej gałki (skręt działa idealnie, bez samoczynnego skręcania)
+                    # Klonowanie obu gałek (lewa = skręt, prawa = kamera/rozglądanie)
                     sticks = XInput.get_thumb_values(state)
                     gamepad.left_joystick_float(sticks[0][0], sticks[0][1])
+                    gamepad.right_joystick_float(sticks[1][0], sticks[1][1]) # <-- DODANA PRAWY GAŁKA
 
-                    # 2. Odczyt triggerów gracza
+                    # Odczyt triggerów gracza
                     triggers = XInput.get_trigger_values(state)
                     player_brake = triggers[0]
                     player_gas = triggers[1]
