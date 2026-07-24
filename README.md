@@ -7,10 +7,11 @@ Jedynym narzędziem, jakiego potrzebujesz w systemie, jest uv (szybki menedżer 
 
 Jeśli nie masz jeszcze uv, zainstaluj go poleceniem:
 
-Windows (PowerShell):
+PowerShell:
 
-PowerShell
+```PowerShell
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
 
 ## Instalacja
 Sklonuj repozytorium i przejdź do niego w terminalu:
@@ -30,9 +31,7 @@ uv sync
     Przejdź do Ustawienia -> Ekran i rozgrywka -> Telemetria:
 
     Wysyłanie danych (Data Out): WŁ (ON)
-
     Adres IP (Data Out IP): 127.0.0.1
-
     Port (Data Out Port): 8000
 
 2. Konfiguracja w kodzie (main.py)
