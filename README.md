@@ -20,33 +20,34 @@ mkdir forza-cruise
 cd forza-cruise
 Zsynchronizuj projekt projekt za pomocą uv (automatycznie pobierze odpowiednią wersje Pythona, zainstaluje wymagane biblioteki i utworzy środowisko wirtualne):
 
-	```Bash
+```Bash
 uv sync
-	```
+```
 
 ## Konfiguracja
+
 1. Ustawienia w grze
-Przejdź do Ustawienia -> Ekran i rozgrywka -> Telemetria:
+    Przejdź do Ustawienia -> Ekran i rozgrywka -> Telemetria:
 
-Wysyłanie danych (Data Out): WŁ (ON)
+    Wysyłanie danych (Data Out): WŁ (ON)
 
-Adres IP (Data Out IP): 127.0.0.1
+    Adres IP (Data Out IP): 127.0.0.1
 
-Port (Data Out Port): 8000
+    Port (Data Out Port): 8000
 
 2. Konfiguracja w kodzie (main.py)
-W sekcji początkowej skryptu możesz dostosować parametry:
+    W sekcji początkowej skryptu możesz dostosować parametry:
 
-``` Python
-LISTEN_IP = "0.0.0.0"    # Lokalny adres
-LISTEN_PORT = 8000       # Musi pokrywać się z portem w grze
+    ``` Python
+    LISTEN_IP = "0.0.0.0"    # Lokalny adres
+    LISTEN_PORT = 8000       # Musi pokrywać się z portem w grze
 
-FORWARD_IP = "192.168.0.30"  # Opcjonalny forward telemetrii (np. na dashboard webowy)
-FORWARD_PORT = 8000          
+    FORWARD_IP = "192.168.0.30"  # Opcjonalny forward telemetrii (np. na dashboard webowy)
+    FORWARD_PORT = 8000          
 
-target_speed_kmh = 90.0      # Początkowa prędkość docelowa
-KP = 0.3                     # Współczynnik dynamiki tempomatu
-```
+    target_speed_kmh = 90.0      # Początkowa prędkość docelowa
+    KP = 0.3                     # Współczynnik dynamiki tempomatu
+    ```
 
 ## Uruchomienie
 Uruchom skrypt bezpośrednio przez uv (narzędzie samo zadba o środowisko wirtualne i odpowiednią wersję Pythona):
