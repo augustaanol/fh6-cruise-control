@@ -3,11 +3,11 @@ Skrypt w Pythonie dodający funkcję tempomatu (Cruise Control) do serii gier Fo
 
 ## Wymagania wstępne
 1. uv - szybki manager pakietów dla Pythona. Jeśli nie masz jeszcze uv, zainstaluj go poleceniem w PowerShell
-    ```PowerShell
-    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-    ```
+```PowerShell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
 2. Pad zgodny z XInput
-    W przypadku korzystania z kontrolera Sony użyj oprogramowania tłumaczącego go na XInput np. [DS4Windows](https://ds4-windows.com/)
+W przypadku korzystania z kontrolera Sony użyj oprogramowania tłumaczącego go na XInput np. [DS4Windows](https://ds4-windows.com/)
 
 ## Instalacja
 Sklonuj repozytorium:
@@ -25,10 +25,10 @@ W sekcji konfiguracyjnej na początku skryptu możesz dostosować przypisania pr
 ```Python
 
 # --- NETWORK CONFIGURATION ---
-LISTEN_IP = "127.0.0.1"  
-LISTEN_PORT = 8000       
+LISTEN_IP = "127.0.0.1"          # Adres lokalny komputera
+LISTEN_PORT = 8000               # Port nasłuchu telemtrii (taki sam jak ustawiony w grze)
 
-FORWARD_IP = "192.168.0.30"  
+FORWARD_IP = "192.168.0.30"      # Adres do przekazywania telemetrii dla innej aplikacji
 FORWARD_PORT = 8000  
 
 # --- CRUISE CONTROL CONFIGURATION ---
@@ -59,9 +59,9 @@ uv run cruise-control.py
 ```
 ## Sterowanie domyślne
 Tempomat oferuje dwa tryby aktywacji:
-[Z] - Wł. z poprzednią / Wył. (Włącza tempomat z ostatnią ustawioną prędkością lub domyślną przy pierwszym włączeniu)
-[X] - Wł. z aktualną / Wył. (Włącza tempomat z aktualna prędkością)
+- [Z] - Wł. z poprzednią / Wył. (Włącza tempomat z ostatnią ustawioną prędkością lub domyślną przy pierwszym włączeniu)
+- [X] - Wł. z aktualną / Wył. (Włącza tempomat z aktualna prędkością)
 
 Zmiana prędkości automatycznie wyrównuje do wartości podzielnej przez 5
-[PgUp] - Zwiększ prędkość o 5 km/h
-[PgDown] - Zmniejsz prędkość o 5 km/h
+- [PgUp] - Zwiększ prędkość o 5 km/h
+- [PgDown] - Zmniejsz prędkość o 5 km/h
