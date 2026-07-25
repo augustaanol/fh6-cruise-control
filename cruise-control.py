@@ -284,19 +284,23 @@ async def cruise_control_loop():
             # ==================================================
             # --- CONTROL LOGIC ---
             # ==================================================
-            if cruise_enabled and current_speed is not None:
-                speed_error = target_speed_kmh - current_speed
-                
-                if speed_error > 0:
-                    cruise_gas = min(1.0, speed_error * KP)
-                    cruise_brake = 0.0
-                else:
-                    cruise_gas = 0.0
-                    cruise_brake = min(1.0, abs(speed_error) * KP)
+            TRIGGER_THRESHOLD = 0.05  # 5% martwej strefy (zapobiega przypadkowym dotknięciom)
 
-                # Physical trigger overrides cruise control
-                final_gas = max(cruise_gas, player_gas)
-                final_brake = max(cruise_brake, player_brake)
+            if cruise_enabled and current_speed is not None:
+                # Jeśli gracz fizycznie wciska gaz lub hamulec, tymczasowo ignorujemy tempomat
+                if player_gas > TRIGGER_THRESHOLD or player_brake > TRIGGER_THRESHOLD:
+                    final_gas = player_gas
+                    final_brake = player_brake
+                else:
+                    # Logika tempomatu uaktywnia się tylko, gdy triggery są puszczone
+                    speed_error = target_speed_kmh - current_speed
+                    
+                    if speed_error > 0:
+                        final_gas = min(1.0, speed_error * KP)
+                        final_brake = 0.0
+                    else:
+                        final_gas = 0.0
+                        final_brake = min(1.0, abs(speed_error) * KP)
             else:
                 final_gas = player_gas
                 final_brake = player_brake
