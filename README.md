@@ -16,24 +16,33 @@ git clone https://github.com/augustaanol/fh6-cruise-control
 ```
 ## Konfiguracja
 ### 1. Ustawienia w grze
-    Przejdź do Ustawienia -> Ekran i rozgrywka -> Telemetria 
-    - Wysyłanie danych (Data Out): WŁ (ON)
-    - Adres IP (Data Out IP): 127.0.0.1
-    - Port (Data Out Port): 8000
+Przejdź do Ustawienia -> Ekran i rozgrywka -> Telemetria 
+- Wysyłanie danych (Data Out): WŁ (ON)
+- Adres IP (Data Out IP): 127.0.0.1
+- Port (Data Out Port): 8000
 ### 2. Konfiguracja w kodzie (cruise-control.py)
 W sekcji konfiguracyjnej na początku skryptu możesz dostosować przypisania przycisków oraz zachowanie tempomatu:
 ```Python
-# --- TEMPOMAT ---
+
+# --- NETWORK CONFIGURATION ---
+LISTEN_IP = "127.0.0.1"  
+LISTEN_PORT = 8000       
+
+FORWARD_IP = "192.168.0.30"  
+FORWARD_PORT = 8000  
+
+# --- CRUISE CONTROL CONFIGURATION ---
 STARTUP_TARGET_SPEED_KMH = 60.0  # Początkowa prędkość po uruchomieniu skryptu
 KP = 0.3                         # Współczynnik dynamiki (agresywność przyspieszania/hamowania)
 
-# --- MAPOWANIE KLAWIATURY ---
+# --- KEYBOARD ---
 KB_TOGGLE_RESUME = 'z'           # Włącza na ostatnio zapamiętanej prędkości (lub wyłącza)
 KB_TOGGLE_CURRENT = 'x'          # Włącza na BIEŻĄCEJ prędkości z telemetrii (lub wyłącza)
 KB_SPEED_UP = keyboard.Key.page_up
 KB_SPEED_DOWN = keyboard.Key.page_down
 
-# --- MAPOWANIE PADA (XInput) DOMYŚLNIE WYŁĄCZONE by zapobiec problemom z nadpisanie przycisków ---
+# --- GAMEPAD (XInput) ---
+# Available buttons: 'DPAD_UP', 'DPAD_DOWN', 'DPAD_LEFT', 'DPAD_RIGHT', 'START', 'BACK', 'LEFT_THUMB', 'RIGHT_THUMB', 'LEFT_SHOULDER', 'RIGHT_SHOULDER', 'A', 'B', 'X', 'Y'
 PAD_TOGGLE_RESUME = ''
 PAD_TOGGLE_CURRENT = ''
 PAD_SPEED_UP = ''
@@ -46,7 +55,7 @@ Uruchom plik run.bat (dwukrotnym kliknięciem lub z terminala). Skrypt automatyc
 Otwórz terminal w folderze z plikami skryptu i wykonaj:
 ```PowerShell
 uv sync
-uv run cruise_control.py
+uv run cruise-control.py
 ```
 ## Sterowanie domyślne
 Tempomat oferuje dwa tryby aktywacji:
