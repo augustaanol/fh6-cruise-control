@@ -20,8 +20,8 @@ network:
   
   # Forward telemetry to another device/software (e.g., SimHub, Telemetry Overlay, etc.)
   forward_enabled: false
-  forward_ip: "0.0.0.0"
-  forward_port: 8000
+  forward_ip: "127.0.0.1"
+  forward_port: 8001
 
 # ==================================================
 # --- CRUISE CONTROL CONFIGURATION ---
@@ -29,7 +29,7 @@ network:
 cruise_control:
   startup_target_speed_kmh: 60.0
   speed_step_kmh: 5.0      # Speed step in km/h
-  kp: 0.3                  # A proportional gain for the cruise control (higher = more aggressive, lower = smoother)
+  kp: 0.4                  # A proportional gain for the cruise control (higher = more aggressive, lower = smoother)
 
 # ==================================================
 # --- KEYBOARD CONTROLS ---
