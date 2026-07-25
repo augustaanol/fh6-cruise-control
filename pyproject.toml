@@ -1,11 +1,12 @@
 [project]
 name = "fh6-cruise-control"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.6.1"
+description = "Simple script that adds cruise control feature to Forza Horizon 6"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "pynput>=1.8.2",
+    "pyyaml>=6.0.1",
     "vgamepad>=0.1.0",
     "xinput-python>=0.4.0",
 ]

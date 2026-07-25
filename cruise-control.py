@@ -2,38 +2,102 @@ import socket
 import struct
 import math
 import asyncio
+import os
+import yaml
 import vgamepad as vg
 from pynput import keyboard
 import XInput
 
 # ==================================================
+# --- DEFAULT CONFIGURATION GENERATOR ---
+# ==================================================
+DEFAULT_CONFIG = """# ==================================================
 # --- NETWORK CONFIGURATION ---
 # ==================================================
-LISTEN_IP = "127.0.0.1"  
-LISTEN_PORT = 8000       
-
-FORWARD_IP = "192.168.0.30"  
-FORWARD_PORT = 8000          
+network:
+  listen_ip: "127.0.0.1"
+  listen_port: 8000
+  
+  # Forward telemetry to another device/software (e.g., SimHub, Telemetry Overlay, etc.)
+  forward_enabled: false
+  forward_ip: "0.0.0.0"
+  forward_port: 8000
 
 # ==================================================
 # --- CRUISE CONTROL CONFIGURATION ---
 # ==================================================
-STARTUP_TARGET_SPEED_KMH = 60.0  # Speed at script startup
-KP = 0.3                         # Aggressiveness of acceleration/braking
+cruise_control:
+  startup_target_speed_kmh: 60.0
+  speed_step_kmh: 5.0      # Speed step in km/h
+  kp: 0.3                  # A proportional gain for the cruise control (higher = more aggressive, lower = smoother)
+
+# ==================================================
+# --- KEYBOARD CONTROLS ---
+# ==================================================
+# Use single characters (e.g., 'z', 'x') or special keys (e.g., 'page_up', 'page_down', 'space')
+keyboard:
+  toggle_resume: 'z'
+  toggle_current: 'x'
+  speed_up: 'page_up'
+  speed_down: 'page_down'
+
+# ==================================================
+# --- GAMEPAD CONTROLS (XInput) ---
+# ==================================================
+# Available buttons: 'DPAD_UP', 'DPAD_DOWN', 'DPAD_LEFT', 'DPAD_RIGHT', 'START', 'BACK',
+# 'LEFT_THUMB', 'RIGHT_THUMB', 'LEFT_SHOULDER', 'RIGHT_SHOULDER', 'A', 'B', 'X', 'Y'
+# Leave empty ('') to disable
+gamepad:
+  toggle_resume: ''
+  toggle_current: ''
+  speed_up: ''
+  speed_down: ''
+"""
+
+def load_config(filename="config.yaml"):
+    """Loads config from YAML file. If the file does not exist, creates a default one."""
+    if not os.path.exists(filename):
+        print(f"⚠️ Config file '{filename}' not found. Creating default one...")
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write(DEFAULT_CONFIG)
+            
+    with open(filename, 'r', encoding='utf-8') as f:
+        return yaml.safe_load(f)
+
+# Config loading
+config = load_config()
+
+# --- NETWORK ---
+LISTEN_IP = config['network'].get('listen_ip', '127.0.0.1')
+LISTEN_PORT = config['network'].get('listen_port', 8000)
+FORWARD_ENABLED = config['network'].get('forward_enabled', False)
+FORWARD_IP = config['network'].get('forward_ip', '127.0.0.1')
+FORWARD_PORT = config['network'].get('forward_port', 8001)
+
+# --- CRUISE CONTROL ---
+STARTUP_TARGET_SPEED_KMH = float(config['cruise_control'].get('startup_target_speed_kmh', 60.0))
+SPEED_STEP_KMH = float(config['cruise_control'].get('speed_step_kmh', 5.0))
+KP = float(config['cruise_control'].get('kp', 0.3))
+
+def parse_kb_key(key_str):
+    """Converts string keys like 'page_up' to keyboard.Key objects, and letters to strings."""
+    if not key_str: return None
+    key_str = str(key_str)
+    if hasattr(keyboard.Key, key_str):
+        return getattr(keyboard.Key, key_str)
+    return key_str
 
 # --- KEYBOARD ---
-KB_TOGGLE_RESUME = 'z'           # Enables at the LAST SAVED speed (or disables)
-KB_TOGGLE_CURRENT = 'x'          # Enables at the CURRENT speed (or disables)
-KB_SPEED_UP = keyboard.Key.page_up
-KB_SPEED_DOWN = keyboard.Key.page_down
+KB_TOGGLE_RESUME = parse_kb_key(config['keyboard'].get('toggle_resume'))
+KB_TOGGLE_CURRENT = parse_kb_key(config['keyboard'].get('toggle_current'))
+KB_SPEED_UP = parse_kb_key(config['keyboard'].get('speed_up'))
+KB_SPEED_DOWN = parse_kb_key(config['keyboard'].get('speed_down'))
 
-# --- GAMEPAD (XInput) ---
-# Available buttons: 'DPAD_UP', 'DPAD_DOWN', 'DPAD_LEFT', 'DPAD_RIGHT', 'START', 'BACK', 'LEFT_THUMB', 'RIGHT_THUMB', 'LEFT_SHOULDER', 'RIGHT_SHOULDER', 'A', 'B', 'X', 'Y'
-
-PAD_TOGGLE_RESUME = ''
-PAD_TOGGLE_CURRENT = ''
-PAD_SPEED_UP = ''
-PAD_SPEED_DOWN = ''
+# --- GAMEPAD ---
+PAD_TOGGLE_RESUME = config['gamepad'].get('toggle_resume')
+PAD_TOGGLE_CURRENT = config['gamepad'].get('toggle_current')
+PAD_SPEED_UP = config['gamepad'].get('speed_up')
+PAD_SPEED_DOWN = config['gamepad'].get('speed_down')
 
 # ==================================================
 # --- STATE VARIABLES (Do not edit) ---
@@ -52,7 +116,6 @@ action_speed_down = False
 
 
 def find_active_controller_index():
-    """Automatically detects which index the active gamepad is on (0-3)."""
     for i in range(4):
         try:
             if XInput.get_connected()[i]:
@@ -73,6 +136,7 @@ def parse_speed(data: bytes) -> float | None:
         return None
 
 def is_key_match(key, config_key):
+    if not config_key: return False
     if hasattr(key, 'char') and key.char is not None:
         return key.char.lower() == config_key.lower() if isinstance(config_key, str) else False
     else:
@@ -94,6 +158,12 @@ def check_pad_button(btn_name, current_state, previous_state):
     if not btn_name: return False
     return current_state.get(btn_name, False) and not previous_state.get(btn_name, False)
 
+def get_key_display(key):
+    """Formatuje nazwę klawisza do czytelnego wyświetlania w konsoli."""
+    if not key: return "NONE"
+    if hasattr(key, 'name'): return key.name.upper()
+    return str(key).upper()
+
 async def cruise_control_loop():
     global cruise_enabled, target_speed_kmh, has_received_any_data, previous_pad_buttons
     global action_toggle_resume, action_toggle_current, action_speed_up, action_speed_down
@@ -105,14 +175,17 @@ async def cruise_control_loop():
         pass
     sock.bind((LISTEN_IP, LISTEN_PORT))
     sock.setblocking(False)
-    forward_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    
+    forward_sock = None
+    if FORWARD_ENABLED:
+        forward_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     print("==================================================")
-    print("🚗 ADVANCED CRUISE CONTROL (Smart Rounding) 🎮")
+    print("Forza Horizon Cruise Control")
     print("==================================================")
-    print(f"[{KB_TOGGLE_RESUME.upper()} / {PAD_TOGGLE_RESUME}] - Enable (Last speed) / Disable")
-    print(f"[{KB_TOGGLE_CURRENT.upper()} / {PAD_TOGGLE_CURRENT}] - Enable (Current speed) / Disable")
-    print(f"[CHANGE SPEED] - {KB_SPEED_UP.name}/{KB_SPEED_DOWN.name} or {PAD_SPEED_UP}/{PAD_SPEED_DOWN}\n")
+    print(f"[{get_key_display(KB_TOGGLE_RESUME)} / {PAD_TOGGLE_RESUME or 'NONE'}] - Enable (Last speed) / Disable")
+    print(f"[{get_key_display(KB_TOGGLE_CURRENT)} / {PAD_TOGGLE_CURRENT or 'NONE'}] - Enable (Current speed) / Disable")
+    print(f"[CHANGE SPEED (±{SPEED_STEP_KMH} km/h)] - {get_key_display(KB_SPEED_UP)}/{get_key_display(KB_SPEED_DOWN)} or {PAD_SPEED_UP or 'NONE'}/{PAD_SPEED_DOWN or 'NONE'}\n")
 
     try:
         while True:
@@ -122,12 +195,15 @@ async def cruise_control_loop():
                 try:
                     data, _ = sock.recvfrom(1024)
                     if not has_received_any_data:
-                        print(f"✅ [Successfully connected to Forza telemetry]")
+                        print(f"[Successfully connected to Forza telemetry]")
                         has_received_any_data = True
-                    try:
-                        forward_sock.sendto(data, (FORWARD_IP, FORWARD_PORT))
-                    except Exception:
-                        pass
+                    
+                    if FORWARD_ENABLED and forward_sock:
+                        try:
+                            forward_sock.sendto(data, (FORWARD_IP, FORWARD_PORT))
+                        except Exception:
+                            pass
+                            
                     latest_data = data
                 except BlockingIOError:
                     break
@@ -181,27 +257,25 @@ async def cruise_control_loop():
             if action_toggle_resume or action_toggle_current:
                 if cruise_enabled:
                     cruise_enabled = False
-                    print(f"\n🔴 [CRUISE CONTROL DISABLED] (Saved: {target_speed_kmh:.1f} km/h)")
+                    print(f"\n[CRUISE CONTROL DISABLED] (Saved: {target_speed_kmh:.1f} km/h)")
                 else:
                     if action_toggle_current and current_speed is not None:
                         target_speed_kmh = current_speed
                     
                     cruise_enabled = True
-                    print(f"\n🟢 [CRUISE CONTROL ENABLED] Target: {target_speed_kmh:.1f} km/h")
+                    print(f"\n[CRUISE CONTROL ENABLED] Target: {target_speed_kmh:.1f} km/h")
                 
                 action_toggle_resume = False
                 action_toggle_current = False
 
-            # Changing speed (Rounding to nearest 5)
+            # Changing speed (Dynamic Rounding to nearest SPEED_STEP_KMH)
             if action_speed_up:
-                # If 63, rounds down to 60 and adds 5 = 65. If 60, rounds down to 60 and adds 5 = 65.
-                target_speed_kmh = math.floor(target_speed_kmh / 5.0) * 5.0 + 5.0
+                target_speed_kmh = math.floor(target_speed_kmh / SPEED_STEP_KMH) * SPEED_STEP_KMH + SPEED_STEP_KMH
                 print(f"\n⏩ Target increased: {target_speed_kmh:.1f} km/h")
                 action_speed_up = False
                 
             if action_speed_down:
-                # If 63, rounds up to 65 and subtracts 5 = 60. If 60, rounds up to 60 and subtracts 5 = 55.
-                target_speed_kmh = math.ceil(target_speed_kmh / 5.0) * 5.0 - 5.0
+                target_speed_kmh = math.ceil(target_speed_kmh / SPEED_STEP_KMH) * SPEED_STEP_KMH - SPEED_STEP_KMH
                 if target_speed_kmh < 0.0: 
                     target_speed_kmh = 0.0
                 print(f"\n⏪ Target decreased: {target_speed_kmh:.1f} km/h")
@@ -240,7 +314,8 @@ async def cruise_control_loop():
         gamepad.reset()
         gamepad.update()
         sock.close()
-        forward_sock.close()
+        if forward_sock:
+            forward_sock.close()
 
 if __name__ == "__main__":
     listener = keyboard.Listener(on_press=on_press)
