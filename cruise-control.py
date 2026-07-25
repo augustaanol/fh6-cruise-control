@@ -36,8 +36,8 @@ cruise_control:
 # ==================================================
 # Use single characters (e.g., 'z', 'x') or special keys (e.g., 'page_up', 'page_down', 'space')
 keyboard:
-  toggle_resume: 'z'
-  toggle_current: 'x'
+  toggle_resume: 'home'
+  toggle_current: 'end'
   speed_up: 'page_up'
   speed_down: 'page_down'
 
