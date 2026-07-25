@@ -55,7 +55,6 @@ gamepad:
 """
 
 def load_config(filename="config.yaml"):
-    """Loads config from YAML file. If the file does not exist, creates a default one."""
     if not os.path.exists(filename):
         print(f"⚠️ Config file '{filename}' not found. Creating default one...")
         with open(filename, 'w', encoding='utf-8') as f:
@@ -64,7 +63,6 @@ def load_config(filename="config.yaml"):
     with open(filename, 'r', encoding='utf-8') as f:
         return yaml.safe_load(f)
 
-# Config loading
 config = load_config()
 
 # --- NETWORK ---
@@ -80,7 +78,6 @@ SPEED_STEP_KMH = float(config['cruise_control'].get('speed_step_kmh', 5.0))
 KP = float(config['cruise_control'].get('kp', 0.3))
 
 def parse_kb_key(key_str):
-    """Converts string keys like 'page_up' to keyboard.Key objects, and letters to strings."""
     if not key_str: return None
     key_str = str(key_str)
     if hasattr(keyboard.Key, key_str):
@@ -105,18 +102,19 @@ PAD_SPEED_DOWN = config['gamepad'].get('speed_down')
 target_speed_kmh = STARTUP_TARGET_SPEED_KMH
 cruise_enabled = False
 has_received_any_data = False
-gamepad = vg.VX360Gamepad()
+gamepad = None # Gamepad is initialized dynamically now
 previous_pad_buttons = {}
 
-# Action flags
 action_toggle_resume = False
 action_toggle_current = False
 action_speed_up = False
 action_speed_down = False
 
-
-def find_active_controller_index():
+def find_active_controller_index(exclude_idx=None):
+    """Zwraca indeks fizycznego pada, celowo pomijając naszego wirtualnego."""
     for i in range(4):
+        if i == exclude_idx:
+            continue
         try:
             if XInput.get_connected()[i]:
                 return i
@@ -144,7 +142,6 @@ def is_key_match(key, config_key):
 
 def on_press(key):
     global action_toggle_resume, action_toggle_current, action_speed_up, action_speed_down
-    
     if is_key_match(key, KB_TOGGLE_RESUME):
         action_toggle_resume = True
     elif is_key_match(key, KB_TOGGLE_CURRENT):
@@ -159,7 +156,6 @@ def check_pad_button(btn_name, current_state, previous_state):
     return current_state.get(btn_name, False) and not previous_state.get(btn_name, False)
 
 def get_key_display(key):
-    """Formatuje nazwę klawisza do czytelnego wyświetlania w konsoli."""
     if not key: return "NONE"
     if hasattr(key, 'name'): return key.name.upper()
     return str(key).upper()
@@ -167,6 +163,7 @@ def get_key_display(key):
 async def cruise_control_loop():
     global cruise_enabled, target_speed_kmh, has_received_any_data, previous_pad_buttons
     global action_toggle_resume, action_toggle_current, action_speed_up, action_speed_down
+    global gamepad
     
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -183,14 +180,33 @@ async def cruise_control_loop():
     print("==================================================")
     print("Forza Horizon Cruise Control")
     print("==================================================")
-    print(f"[{get_key_display(KB_TOGGLE_RESUME)} / {PAD_TOGGLE_RESUME or 'NONE'}] - Enable (Last speed) / Disable")
+    
+    # ---------------------------------------------------------
+    # INTELIGENTNE WYKRYWANIE PADA (Zapobiega czytaniu wirtualnego)
+    # ---------------------------------------------------------
+    connected_before = [i for i in range(4) if XInput.get_connected()[i]]
+    print("[Init] Oczekuję na wykrycie kontrolerów w systemie...")
+    
+    gamepad = vg.VX360Gamepad()
+    await asyncio.sleep(1.0) # Dajemy Windowsowi sekundę na dodanie wirtualnego pada
+    
+    connected_after = [i for i in range(4) if XInput.get_connected()[i]]
+    new_indices = [i for i in connected_after if i not in connected_before]
+    VIRTUAL_IDX = new_indices[0] if new_indices else None
+    
+    if VIRTUAL_IDX is not None:
+        print(f"[Init] Zabezpieczono wirtualnego pada (Indeks: {VIRTUAL_IDX}). Skrypt nie będzie go czytał.")
+    else:
+        print("[Init] Nie udało się odseparować wirtualnego pada, możliwe błędy. Odłącz i podłącz fizycznego.")
+    # ---------------------------------------------------------
+
+    print(f"\n[{get_key_display(KB_TOGGLE_RESUME)} / {PAD_TOGGLE_RESUME or 'NONE'}] - Enable (Last speed) / Disable")
     print(f"[{get_key_display(KB_TOGGLE_CURRENT)} / {PAD_TOGGLE_CURRENT or 'NONE'}] - Enable (Current speed) / Disable")
     print(f"[CHANGE SPEED (±{SPEED_STEP_KMH} km/h)] - {get_key_display(KB_SPEED_UP)}/{get_key_display(KB_SPEED_DOWN)} or {PAD_SPEED_UP or 'NONE'}/{PAD_SPEED_DOWN or 'NONE'}\n")
 
     try:
         while True:
             latest_data = None
-
             while True:
                 try:
                     data, _ = sock.recvfrom(1024)
@@ -212,14 +228,17 @@ async def cruise_control_loop():
 
             current_speed = parse_speed(latest_data) if latest_data else None
 
-            controller_idx = find_active_controller_index()
+            # Czytamy tylko FIZYCZNEGO pada (wykluczając wirtualnego)
+            controller_idx = find_active_controller_index(exclude_idx=VIRTUAL_IDX)
+            
             if controller_idx is not None:
                 try:
                     state = XInput.get_state(controller_idx)
                     
-                    # --- GAMEPAD BUTTONS HANDLING ---
+                    # --- ODCZYT PRZYCISKÓW PADA (Tylko do nawigacji tempomatem) ---
                     current_pad_buttons = XInput.get_button_values(state)
                     
+                    # Sprawdzanie akcji tempomatu
                     if check_pad_button(PAD_TOGGLE_RESUME, current_pad_buttons, previous_pad_buttons):
                         action_toggle_resume = True
                     if check_pad_button(PAD_TOGGLE_CURRENT, current_pad_buttons, previous_pad_buttons):
@@ -231,12 +250,15 @@ async def cruise_control_loop():
                         
                     previous_pad_buttons = current_pad_buttons
 
-                    # --- CLONING THUMBSTICKS ---
+                    # CELOWO USUNIĘTO KLONOWANIE POZOSTAŁYCH PRZYCISKÓW (A, B, RB, LB) 
+                    # ABY UNIKNĄĆ "DOUBLE CLICKS" W GRZE.
+
+                    # --- KLONOWANIE GAŁEK (Kierownica i kamera) ---
                     sticks = XInput.get_thumb_values(state)
                     gamepad.left_joystick_float(sticks[0][0], sticks[0][1])
                     gamepad.right_joystick_float(sticks[1][0], sticks[1][1])
 
-                    # --- READING PLAYER TRIGGERS (PEDALS) ---
+                    # --- ODCZYT PEDAŁÓW GRACZA ---
                     triggers = XInput.get_trigger_values(state)
                     player_brake = triggers[0]
                     player_gas = triggers[1]
@@ -250,10 +272,8 @@ async def cruise_control_loop():
 
 
             # ==================================================
-            # --- PROCESSING ACTIONS (Flags) ---
+            # --- PRZETWARZANIE AKCJI ---
             # ==================================================
-            
-            # Toggling cruise control
             if action_toggle_resume or action_toggle_current:
                 if cruise_enabled:
                     cruise_enabled = False
@@ -268,7 +288,6 @@ async def cruise_control_loop():
                 action_toggle_resume = False
                 action_toggle_current = False
 
-            # Changing speed (Dynamic Rounding to nearest SPEED_STEP_KMH)
             if action_speed_up:
                 target_speed_kmh = math.floor(target_speed_kmh / SPEED_STEP_KMH) * SPEED_STEP_KMH + SPEED_STEP_KMH
                 print(f"\n⏩ Target increased: {target_speed_kmh:.1f} km/h")
@@ -282,17 +301,16 @@ async def cruise_control_loop():
                 action_speed_down = False
 
             # ==================================================
-            # --- CONTROL LOGIC ---
+            # --- LOGIKA STEROWANIA ---
             # ==================================================
-            TRIGGER_THRESHOLD = 0.05  # 5% martwej strefy (zapobiega przypadkowym dotknięciom)
+            TRIGGER_THRESHOLD = 0.05
 
             if cruise_enabled and current_speed is not None:
-                # Jeśli gracz fizycznie wciska gaz lub hamulec, tymczasowo ignorujemy tempomat
+                # Jeśli gracz naciska fizyczny gaz/hamulec, ignorujemy tempomat
                 if player_gas > TRIGGER_THRESHOLD or player_brake > TRIGGER_THRESHOLD:
                     final_gas = player_gas
                     final_brake = player_brake
                 else:
-                    # Logika tempomatu uaktywnia się tylko, gdy triggery są puszczone
                     speed_error = target_speed_kmh - current_speed
                     
                     if speed_error > 0:
@@ -305,7 +323,7 @@ async def cruise_control_loop():
                 final_gas = player_gas
                 final_brake = player_brake
 
-            # Sending data to virtual gamepad
+            # Wysyłka przeliczonych wartości gazu/hamulca na wirtualnego pada
             gamepad.right_trigger_float(final_gas)
             gamepad.left_trigger_float(final_brake)
             gamepad.update()
@@ -315,8 +333,9 @@ async def cruise_control_loop():
     except asyncio.CancelledError:
         pass
     finally:
-        gamepad.reset()
-        gamepad.update()
+        if gamepad:
+            gamepad.reset()
+            gamepad.update()
         sock.close()
         if forward_sock:
             forward_sock.close()
