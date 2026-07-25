@@ -26,6 +26,7 @@ Przejdź do Ustawienia -> Ekran i rozgrywka -> Telemetria
 
 #### network
 | Zmienna | Wartość domyślna | Opis |
+| --- | --- | --- |
 | listen_ip | "127.0.0.1" | Adres na którym skrypt nasłuchuje telemetrii |
 | listen_port | 8000 | Port na którym skrypt nasłuchuje telemetrii |
 | forward_enabled | true | Przekazywanie surowej telemetrii z gry do innego urządzenia/programu np. SimHub |
@@ -34,12 +35,14 @@ Przejdź do Ustawienia -> Ekran i rozgrywka -> Telemetria
 
 #### cruise_control
 | Zmienna | Wartość domyślna | Opis |
+| --- | --- | --- |
 | startup_target_speed_kmh | 60.0 | Domyślna prędkość docelowa - używana jedynie przy pierwszym włączeniu w trybie "Wł. z poprzednią" |
 | speed_step_kmh | 5.0 | Krok przy zwiększaniu/zmniejszaniu prędkości docelowej |
 | kp | 0.4 | (0-1) Współczynnik siły przyspieszania/hamowania. Wyższy = bardziej agresywny. (Work in progress) | 
 
 #### Sterowanie
 | Zmienna | Domyśl. klawiatura | Domyśl. kontroler | Opis |
+| --- | --- | --- | --- |
 | toggle_resume | 'home' | '' | Wł. z poprzednią / Wył. - włącza tempomat z ostatnią ustawioną prędkością (domyślną przy pierwszym włączeniu) |
 | toggle_current | 'end' | '' | Wł. z aktualną / Wył. - Włącza tempomat z aktualna prędkością |
 | speed_up | 'page_up' | '' | Zwiększ prędkość (domyślnie +5 km/h) |
