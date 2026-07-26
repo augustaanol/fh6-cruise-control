@@ -29,20 +29,20 @@ git clone [https://github.com/augustaanol/fh6-cruise-control](https://github.com
 ### 2. Script Configuration (config.yaml)
   [Run](#launching) and close the script once to generate the default configuration file.
   #### network
-  | Variable | Default Value | Description |
-  | --- | --- | --- |
-  | listen_ip | "127.0.0.1" | IP address the script listens on for telemetry |
-  | listen_port | 8000 | Port the script listens on for telemetry |
-  | forward_enabled | false  | Forward raw game telemetry to another device/software, e.g., SimHub |
-  | forward_ip | "127.0.0.1" | Forwarding IP address |
-  | forward_port | 8001 | Forwarding port |
+  | Variable | Default Value | Type | Description |
+  | --- | --- | --- | --- |
+  | listen_ip | "127.0.0.1" | string | IP address the script listens on for telemetry |
+  | listen_port | 8000 |  integer | Port the script listens on for telemetry |
+  | forward_enabled | false  | boolean | Forward raw game telemetry to another device/software, e.g., SimHub |
+  | forward_ip | "127.0.0.1" | string | Forwarding IP address |
+  | forward_port | 8001 | integer | Forwarding port |
 
   #### cruise_control
-  | Variable | Default Value | Description |
-  | --- | --- | --- |
-  | startup_target_speed_kmh | 60.0 | Default target speed - used only on the first enable in "Resume" mode |
-  | speed_step_kmh | 5.0 | Speed increment/decrement step |
-  | kp | 0.4 | (0-1) Acceleration/braking strength coefficient. Higher = more aggressive. (Work in progress) |
+  | Variable | Default Value | Type | Description |
+  | --- | --- | --- | --- |
+  | startup_target_speed_kmh | 60.0 | float | Default target speed - used only on the first enable in "Resume" mode |
+  | speed_step_kmh | 5.0 | float | Speed increment/decrement step |
+  | kp | 0.4 | float | (0-1) Acceleration/braking strength coefficient. Higher = more aggressive. (Work in progress) |
 
   #### Controls
   | Variable | Default Keyboard | Default Controller | Description |
