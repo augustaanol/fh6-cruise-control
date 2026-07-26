@@ -14,7 +14,7 @@ A Python script that adds a **Cruise Control feature** to the **Forza Horizon 6*
 Clone the repository:
 
 ```Bash
-git clone [https://github.com/augustaanol/fh6-cruise-control](https://github.com/augustaanol/fh6-cruise-control)
+git clone https://github.com/augustaanol/fh6-cruise-control.git
 ```
 
 ...or download .zip (will not update automatically).
